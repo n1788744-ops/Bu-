@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Subtle outer orbital ring -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,23 A31,31 0 1,1 53.9,23 Z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#38BDF8" />
+    <!-- Bold geometric K -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M37,35 L45,35 L45,73 L37,73 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,53 L62,35 L73,35 L52,57 Z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M49,54 L56,48 L73,73 L62,73 Z" />
+</vector>

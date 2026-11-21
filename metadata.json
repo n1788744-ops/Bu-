@@ -1,0 +1,6 @@
+{
+  "name": "Браузер K",
+  "description": "Мобильный браузер с авторизацией ID K, прокси-сервером для Telegram Web, защитой от опасных ссылок и профилем пользователя.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
