@@ -45,7 +45,7 @@ interface BrowserTabDao {
 
 @Dao
 interface BookmarkDao {
-    @Query("SELECT * FROM bookmarks ORDER BY isTelegram DESC, id ASC")
+    @Query("SELECT * FROM bookmarks ORDER BY id ASC")
     fun observeBookmarks(): Flow<List<BookmarkEntity>>
 
     @Query("SELECT COUNT(*) FROM bookmarks")
@@ -74,31 +74,4 @@ interface HistoryDao {
 
     @Query("DELETE FROM history_items")
     suspend fun clearAll()
-}
-
-@Dao
-interface ProxyConfigDao {
-    @Query("SELECT * FROM proxy_configs ORDER BY id ASC")
-    fun observeConfigs(): Flow<List<ProxyConfigEntity>>
-
-    @Query("SELECT COUNT(*) FROM proxy_configs")
-    suspend fun count(): Int
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertConfig(config: ProxyConfigEntity): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(configs: List<ProxyConfigEntity>)
-
-    @Query("UPDATE proxy_configs SET isActive = 0")
-    suspend fun deactivateAll()
-
-    @Query("UPDATE proxy_configs SET isActive = 1 WHERE id = :id")
-    suspend fun activateById(id: Long)
-
-    @Query("UPDATE proxy_configs SET lastLatencyMs = :latency WHERE id = :id")
-    suspend fun updateLatency(id: Long, latency: Int?)
-
-    @Query("DELETE FROM proxy_configs WHERE id = :id")
-    suspend fun deleteById(id: Long)
 }

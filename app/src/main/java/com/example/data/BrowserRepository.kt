@@ -4,7 +4,6 @@ import com.example.data.local.BookmarkEntity
 import com.example.data.local.BrowserTabEntity
 import com.example.data.local.HistoryEntity
 import com.example.data.local.KBrowserDatabase
-import com.example.data.local.ProxyConfigEntity
 import com.example.data.local.UserProfileEntity
 import com.example.data.preferences.BrowserPreferences
 import com.example.data.preferences.BrowserSettingsSnapshot
@@ -19,7 +18,6 @@ class BrowserRepository(
     val tabs: Flow<List<BrowserTabEntity>> = db.browserTabDao().observeTabs()
     val bookmarks: Flow<List<BookmarkEntity>> = db.bookmarkDao().observeBookmarks()
     val history: Flow<List<HistoryEntity>> = db.historyDao().observeHistory()
-    val proxyConfigs: Flow<List<ProxyConfigEntity>> = db.proxyConfigDao().observeConfigs()
     val settings: Flow<BrowserSettingsSnapshot> = preferences.settingsFlow
 
     suspend fun ensureSeedData() {
@@ -27,41 +25,10 @@ class BrowserRepository(
             db.bookmarkDao().insertAll(
                 listOf(
                     BookmarkEntity(
-                        title = "Telegram Web",
-                        url = "https://web.telegram.org/k/",
-                        shortBadge = "TG",
-                        accentColorHex = 0xFF229ED9,
-                        isTelegram = true,
-                    ),
-                    BookmarkEntity(
-                        title = "Яндекс",
-                        url = "https://ya.ru/",
-                        shortBadge = "Я",
-                        accentColorHex = 0xFFFC3F1D,
-                    ),
-                    BookmarkEntity(
-                        title = "Google",
-                        url = "https://www.google.com/",
-                        shortBadge = "G",
-                        accentColorHex = 0xFF4285F4,
-                    ),
-                    BookmarkEntity(
-                        title = "Википедия",
-                        url = "https://ru.wikipedia.org/",
-                        shortBadge = "W",
-                        accentColorHex = 0xFF334155,
-                    ),
-                    BookmarkEntity(
-                        title = "GitHub",
-                        url = "https://github.com/",
-                        shortBadge = "GH",
-                        accentColorHex = 0xFF181717,
-                    ),
-                    BookmarkEntity(
-                        title = "Хабр",
-                        url = "https://habr.com/ru/",
-                        shortBadge = "H",
-                        accentColorHex = 0xFF65A3BE,
+                        title = "SiteFortress",
+                        url = "http://sitefortress.ru/",
+                        shortBadge = "SF",
+                        accentColorHex = 0xFF0EA5E9,
                     ),
                 )
             )
@@ -77,37 +44,6 @@ class BrowserRepository(
                 )
             )
             preferences.setActiveTabId(firstId)
-        }
-
-        if (db.proxyConfigDao().count() == 0) {
-            db.proxyConfigDao().insertAll(
-                listOf(
-                    ProxyConfigEntity(
-                        name = "Стабильный канал (Прямой + Keep-Alive)",
-                        protocol = "DIRECT",
-                        host = "web.telegram.org",
-                        port = 443,
-                        telegramOnly = true,
-                        isActive = true,
-                    ),
-                    ProxyConfigEntity(
-                        name = "Пользовательский HTTP/HTTPS прокси",
-                        protocol = "HTTPS",
-                        host = "127.0.0.1",
-                        port = 8080,
-                        telegramOnly = true,
-                        isActive = false,
-                    ),
-                    ProxyConfigEntity(
-                        name = "Пользовательский SOCKS5 прокси",
-                        protocol = "SOCKS5",
-                        host = "127.0.0.1",
-                        port = 1080,
-                        telegramOnly = true,
-                        isActive = false,
-                    ),
-                )
-            )
         }
     }
 
@@ -199,14 +135,12 @@ class BrowserRepository(
         if (url.isBlank()) return
         val cleanHost = url.removePrefix("https://").removePrefix("http://").removePrefix("www.")
         val badge = cleanHost.take(2).uppercase().ifBlank { "K" }
-        val isTg = url.contains("telegram.org", ignoreCase = true)
         db.bookmarkDao().insertBookmark(
             BookmarkEntity(
                 title = title.ifBlank { cleanHost.substringBefore("/") },
                 url = url,
                 shortBadge = badge,
-                accentColorHex = if (isTg) 0xFF229ED9 else 0xFF334155,
-                isTelegram = isTg,
+                accentColorHex = 0xFF0EA5E9,
             )
         )
     }
@@ -229,28 +163,6 @@ class BrowserRepository(
 
     suspend fun clearHistory() = db.historyDao().clearAll()
 
-    suspend fun saveAndActivateProxy(config: ProxyConfigEntity): Long {
-        db.proxyConfigDao().deactivateAll()
-        val id = db.proxyConfigDao().insertConfig(config.copy(isActive = true))
-        preferences.setProxyEnabled(true)
-        return id
-    }
-
-    suspend fun activateProxy(id: Long) {
-        db.proxyConfigDao().deactivateAll()
-        db.proxyConfigDao().activateById(id)
-        preferences.setProxyEnabled(true)
-    }
-
-    suspend fun updateProxyLatency(id: Long, latencyMs: Int?) {
-        db.proxyConfigDao().updateLatency(id, latencyMs)
-    }
-
-    suspend fun deleteProxyConfig(id: Long) = db.proxyConfigDao().deleteById(id)
-
-    suspend fun setProxyEnabled(enabled: Boolean) = preferences.setProxyEnabled(enabled)
-    suspend fun setTelegramKeepAlive(enabled: Boolean) = preferences.setTelegramKeepAlive(enabled)
-    suspend fun setTelegramWebVariant(variant: String) = preferences.setTelegramWebVariant(variant)
     suspend fun setSearchEngine(engine: String) = preferences.setSearchEngine(engine)
     suspend fun setSafeBrowsingEnabled(enabled: Boolean) = preferences.setSafeBrowsingEnabled(enabled)
     suspend fun setThemeMode(mode: String) = preferences.setThemeMode(mode)

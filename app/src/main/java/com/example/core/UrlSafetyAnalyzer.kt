@@ -1,6 +1,6 @@
 package com.example.core
 
-import android.net.Uri
+import java.net.URI
 import java.net.URLEncoder
 import java.util.Locale
 
@@ -22,6 +22,10 @@ sealed interface SafetyVerdict {
 object UrlSafetyAnalyzer {
     private val sessionAllowedUrls = mutableSetOf<String>()
     private val sessionAllowedHosts = mutableSetOf<String>()
+
+    private val trustedHosts = setOf(
+        "sitefortress.ru",
+    )
 
     private val ipv4Regex = Regex("""^\d{1,3}(\.\d{1,3}){3}$""")
     private val domainLikeRegex = Regex("""^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$""")
@@ -50,7 +54,7 @@ object UrlSafetyAnalyzer {
     fun isUrlAllowedForSession(url: String): Boolean {
         if (sessionAllowedUrls.contains(url)) return true
         val host = extractHost(url)
-        return host != null && sessionAllowedHosts.contains(host)
+        return host != null && (sessionAllowedHosts.contains(host) || trustedHosts.contains(host))
     }
 
     fun resolveOmniboxInput(rawInput: String, searchEngine: String): String {
@@ -70,7 +74,12 @@ object UrlSafetyAnalyzer {
             (domainLikeRegex.matches(trimmed) || looksLikeIp || firstSegment.startsWith("localhost"))
 
         if (looksLikeDomain) {
-            return "https://$trimmed"
+            val cleanHost = firstSegment.lowercase(Locale.ROOT).removePrefix("www.")
+            return if (trustedHosts.contains(cleanHost)) {
+                "http://$trimmed"
+            } else {
+                "https://$trimmed"
+            }
         }
 
         val encoded = URLEncoder.encode(trimmed, "UTF-8")
@@ -96,7 +105,7 @@ object UrlSafetyAnalyzer {
             isHighRisk = true
         }
 
-        val uri = runCatching { Uri.parse(trimmed) }.getOrNull()
+        val uri = runCatching { URI(trimmed) }.getOrNull()
         val scheme = uri?.scheme?.lowercase(Locale.ROOT) ?: ""
         val host = uri?.host?.lowercase(Locale.ROOT)?.removePrefix("www.") ?: ""
 
@@ -142,16 +151,7 @@ object UrlSafetyAnalyzer {
 
     fun extractHost(url: String): String? {
         return runCatching {
-            Uri.parse(url).host?.lowercase(Locale.ROOT)?.removePrefix("www.")
+            URI(url).host?.lowercase(Locale.ROOT)?.removePrefix("www.")
         }.getOrNull()?.takeIf { it.isNotBlank() }
-    }
-
-    fun isTelegramHost(url: String): Boolean {
-        val host = extractHost(url) ?: return false
-        return host == "web.telegram.org" ||
-            host.endsWith(".telegram.org") ||
-            host == "telegram.org" ||
-            host == "t.me" ||
-            host == "telegra.ph"
     }
 }

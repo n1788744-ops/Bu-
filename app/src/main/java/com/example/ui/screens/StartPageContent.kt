@@ -1,13 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,23 +17,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.SupportAgent
-import androidx.compose.material.icons.outlined.VpnKey
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -42,60 +34,43 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.core.LegalContent
 import com.example.data.local.BookmarkEntity
-import com.example.data.local.HistoryEntity
-import com.example.data.local.ProxyConfigEntity
 import com.example.data.local.UserProfileEntity
 import com.example.ui.theme.ElectricSky
 import com.example.ui.theme.Obsidian
 import com.example.ui.theme.PureWhite
-import com.example.ui.theme.SafeEmerald
-import com.example.ui.theme.TelegramBlue
 
 @Composable
 fun StartPageContent(
     profile: UserProfileEntity?,
     bookmarks: List<BookmarkEntity>,
-    history: List<HistoryEntity>,
-    activeProxy: ProxyConfigEntity?,
-    proxyEnabled: Boolean,
     safeBrowsingEnabled: Boolean,
-    searchEngine: String,
-    onOpenOmnibox: () -> Unit,
     onOpenUrl: (String) -> Unit,
-    onOpenTelegramWeb: () -> Unit,
-    onOpenProxySheet: () -> Unit,
     onOpenProfile: () -> Unit,
-    onOpenBookmarks: () -> Unit,
-    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface,
-                    )
-                )
-            )
-            .statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 112.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        item {
-            // Top bar with Brand + Status chips + ID K Profile Pill
+    Box(modifier = modifier.fillMaxSize()) {
+        // Full-bleed green rolling hills & sunlit meadow wallpaper matching the screenshot
+        MeadowLandscapeBackdrop(modifier = Modifier.fillMaxSize())
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Top Header matching the right phone in the screenshot:
+            // [K]  Браузер K  ...  [Profile/Shield]
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -103,505 +78,361 @@ fun StartPageContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Obsidian),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                Surface(
+                    onClick = onOpenProfile,
+                    shape = CircleShape,
+                    color = PureWhite.copy(alpha = 0.22f),
+                    border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .size(38.dp)
+                        .testTag("start_logo_badge"),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = "K",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = ElectricSky,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = PureWhite,
                             fontWeight = FontWeight.ExtraBold,
                         )
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "Браузер K",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Filled.Shield,
-                                contentDescription = null,
-                                tint = if (safeBrowsingEnabled) SafeEmerald else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(13.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (safeBrowsingEnabled) "Защита активна" else "Защита выкл.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
                 }
 
-                // Clickable ID K Profile Pill
-                val initials = buildProfileInitials(profile)
-                val avatarColor = Color(profile?.avatarColorHex ?: 0xFF0EA5E9)
+                Text(
+                    text = "Браузер K",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = PureWhite,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
                 Surface(
                     onClick = onOpenProfile,
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    shadowElevation = 2.dp,
+                    shape = CircleShape,
+                    color = PureWhite.copy(alpha = 0.22f),
+                    border = BorderStroke(1.dp, PureWhite.copy(alpha = 0.45f)),
                     modifier = Modifier
+                        .size(38.dp)
                         .minimumInteractiveComponentSize()
                         .testTag("start_profile_button"),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(avatarColor),
-                            contentAlignment = Alignment.Center,
-                        ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        val initials = buildProfileInitials(profile)
+                        if (initials.isNotBlank() && initials != "K") {
                             Text(
                                 text = initials,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = PureWhite,
                                 fontWeight = FontWeight.Bold,
                             )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = profile?.displayName?.ifBlank { "ID K" } ?: "ID K",
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 120.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            // Hero Search Pill
-            Surface(
-                onClick = onOpenOmnibox,
-                shape = RoundedCornerShape(22.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shadowElevation = 4.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 720.dp)
-                    .height(58.dp)
-                    .testTag("start_search_bar"),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = "Поиск",
-                        tint = ElectricSky,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Поиск в $searchEngine или введите адрес",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-
-        item {
-            // Featured Telegram Web + Proxy Hero Card
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shadowElevation = 2.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 720.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    TelegramBlue.copy(alpha = 0.12f),
-                                    ElectricSky.copy(alpha = 0.05f),
-                                )
-                            )
-                        )
-                        .padding(18.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(TelegramBlue),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = "Telegram Web",
-                                    tint = PureWhite,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "Telegram Web + Прокси",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                val statusText = if (proxyEnabled && activeProxy != null && activeProxy.protocol != "DIRECT") {
-                                    "Прокси: ${activeProxy.protocol} ${activeProxy.host}:${activeProxy.port}"
-                                } else if (proxyEnabled) {
-                                    "Стабильный WebSocket-канал активен"
-                                } else {
-                                    "Прямое соединение"
-                                }
-                                Text(
-                                    text = statusText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = if (proxyEnabled) SafeEmerald.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant,
-                        ) {
-                            Text(
-                                text = if (proxyEnabled) "Активен" else "Выкл",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (proxyEnabled) SafeEmerald else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Button(
-                            onClick = onOpenTelegramWeb,
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = TelegramBlue,
-                                contentColor = PureWhite,
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .testTag("open_telegram_web_button"),
-                        ) {
-                            Text(
-                                text = "Открыть Telegram",
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = onOpenProxySheet,
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                            modifier = Modifier
-                                .height(48.dp)
-                                .testTag("configure_proxy_button"),
-                        ) {
+                        } else {
                             Icon(
-                                imageVector = Icons.Outlined.VpnKey,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = "Профиль ID K",
+                                tint = PureWhite,
+                                modifier = Modifier.size(20.dp),
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Прокси")
                         }
                     }
                 }
             }
-        }
 
-        item {
-            // Express Bookmarks Section
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 720.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = "Быстрый доступ",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // White floating card(s) matching the screenshot's top quick-access tiles:
+            // Featured sole site: http://sitefortress.ru/
+            val featuredBookmarks = if (bookmarks.isNotEmpty()) {
+                bookmarks
+            } else {
+                listOf(
+                    BookmarkEntity(
+                        id = 1L,
+                        title = "SiteFortress",
+                        url = "http://sitefortress.ru/",
+                        shortBadge = "SF",
+                        accentColorHex = 0xFF0EA5E9,
                     )
-                    Surface(
-                        onClick = onOpenBookmarks,
-                        shape = RoundedCornerShape(50),
-                        color = Color.Transparent,
-                        modifier = Modifier.minimumInteractiveComponentSize(),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Все закладки",
-                                modifier = Modifier.size(16.dp),
-                                tint = ElectricSky,
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Закладки",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = ElectricSky,
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val columns = if (maxWidth > 520.dp) 4 else 3
-                    val rows = bookmarks.chunked(columns)
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        rows.forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                rowItems.forEach { item ->
-                                    BookmarkTile(
-                                        bookmark = item,
-                                        onClick = {
-                                            if (item.isTelegram) onOpenTelegramWeb() else onOpenUrl(item.url)
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                repeat(columns - rowItems.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
+                )
             }
-        }
 
-        if (history.isNotEmpty()) {
-            item {
-                Column(
+            if (featuredBookmarks.size == 1) {
+                val site = featuredBookmarks.first()
+                SiteFortressFeaturedTile(
+                    site = site,
+                    onClick = { onOpenUrl(site.url) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 720.dp),
+                )
+            } else {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 720.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = "Недавние переходы",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                    items(featuredBookmarks, key = { it.id }) { item ->
+                        CompactQuickTile(
+                            bookmark = item,
+                            onClick = { onOpenUrl(item.url) },
                         )
-                        Text(
-                            text = "Вся история",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = ElectricSky,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable(onClick = onOpenHistory)
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            history.take(3).forEachIndexed { idx, entry ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onOpenUrl(entry.url) }
-                                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.History,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = entry.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Text(
-                                            text = entry.url,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                                if (idx < history.take(3).lastIndex) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(1.dp)
-                                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
-        }
 
-        item {
-            // Security & Support Summary Card
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Subtle translucent info strip under the cards (mirroring city/weather row in screenshot)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 720.dp),
+                    .widthIn(max = 720.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Outlined.Security,
+                        imageVector = Icons.Filled.Shield,
                         contentDescription = null,
-                        tint = SafeEmerald,
-                        modifier = Modifier.size(22.dp),
+                        tint = PureWhite.copy(alpha = 0.92f),
+                        modifier = Modifier.size(14.dp),
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Умная проверка ссылок",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = "Безопасные сайты открываются мгновенно. Если ссылка подозрительная — мы предупредим, но оставим выбор «Всё равно перейти».",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.SupportAgent,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Поддержка: ${LegalContent.SUPPORT_EMAIL}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = if (safeBrowsingEnabled) "Защита активна" else "Защита выкл.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PureWhite.copy(alpha = 0.92f),
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
+
+                val locationOrUser = profile?.city?.takeIf { it.isNotBlank() }
+                    ?: profile?.displayName?.takeIf { it.isNotBlank() }
+                    ?: "ID K"
+                Text(
+                    text = locationOrUser,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PureWhite.copy(alpha = 0.92f),
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun BookmarkTile(
-    bookmark: BookmarkEntity,
+private fun SiteFortressFeaturedTile(
+    site: BookmarkEntity,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = PureWhite.copy(alpha = 0.96f),
+        shadowElevation = 6.dp,
+        modifier = modifier.testTag("bookmark_tile_SF"),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(site.accentColorHex)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Language,
+                    contentDescription = null,
+                    tint = PureWhite,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = site.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Obsidian,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "Оформить домен • Полностью бесплатно",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF475569),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = ElectricSky.copy(alpha = 0.14f),
+            ) {
+                Text(
+                    text = "Открыть",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF0284C7),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactQuickTile(
+    bookmark: BookmarkEntity,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
         shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        modifier = modifier
-            .height(92.dp)
+        color = PureWhite.copy(alpha = 0.96f),
+        shadowElevation = 5.dp,
+        modifier = Modifier
+            .width(114.dp)
+            .height(78.dp)
             .testTag("bookmark_tile_${bookmark.shortBadge}"),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(10.dp),
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(32.dp)
+                    .clip(CircleShape)
                     .background(Color(bookmark.accentColorHex)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = bookmark.shortBadge,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     color = PureWhite,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = 12.sp,
                 )
             }
-            Spacer(modifier = Modifier.height(7.dp))
+            Spacer(modifier = Modifier.height(5.dp))
             Text(
                 text = bookmark.title,
                 style = MaterialTheme.typography.labelMedium,
+                color = Obsidian,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+@Composable
+private fun MeadowLandscapeBackdrop(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // Crisp sky gradient (top third matching the blue-azure sky in screenshot)
+        drawRect(
+            brush = Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.0f to Color(0xFF2177C7),
+                    0.22f to Color(0xFF3E95DC),
+                    0.38f to Color(0xFF7BC0EC),
+                    0.48f to Color(0xFFA9DCB5),
+                    1.0f to Color(0xFF2D6A1E),
+                )
+            )
+        )
+
+        // Distant forest horizon ridge
+        val farHill = Path().apply {
+            moveTo(0f, h * 0.42f)
+            cubicTo(w * 0.25f, h * 0.36f, w * 0.55f, h * 0.44f, w, h * 0.34f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(
+            path = farHill,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color(0xFF1F5422), Color(0xFF2F7225)),
+                startY = h * 0.34f,
+                endY = h * 0.72f,
+            )
+        )
+
+        // Mid sunlit rolling meadow hill
+        val midHill = Path().apply {
+            moveTo(0f, h * 0.46f)
+            cubicTo(w * 0.35f, h * 0.52f, w * 0.72f, h * 0.40f, w, h * 0.48f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(
+            path = midHill,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color(0xFF77BC2D), Color(0xFF4F941E)),
+                startY = h * 0.42f,
+                endY = h * 0.85f,
+            )
+        )
+
+        // Foreground lush green slope with warm sunlight glow
+        val frontHill = Path().apply {
+            moveTo(0f, h * 0.62f)
+            cubicTo(w * 0.30f, h * 0.56f, w * 0.68f, h * 0.66f, w, h * 0.58f)
+            lineTo(w, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(
+            path = frontHill,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color(0xFF6BB324), Color(0xFF2F6E12)),
+                startY = h * 0.56f,
+                endY = h,
+            )
+        )
+
+        // Soft sunlit highlights & stylized tree clusters along the ridge
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0x38D9F99D), Color.Transparent),
+                center = Offset(w * 0.38f, h * 0.56f),
+                radius = w * 0.45f,
+            ),
+            center = Offset(w * 0.38f, h * 0.56f),
+            radius = w * 0.45f,
+        )
+        drawCircle(
+            color = Color(0xFF22571C),
+            radius = w * 0.11f,
+            center = Offset(w * 0.18f, h * 0.58f),
+        )
+        drawCircle(
+            color = Color(0xFF266220),
+            radius = w * 0.085f,
+            center = Offset(w * 0.27f, h * 0.60f),
+        )
+        drawCircle(
+            color = Color(0xFF235B1D),
+            radius = w * 0.12f,
+            center = Offset(w * 0.84f, h * 0.52f),
+        )
     }
 }
 

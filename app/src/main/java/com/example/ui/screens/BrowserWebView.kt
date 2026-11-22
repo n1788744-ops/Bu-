@@ -3,7 +3,6 @@ package com.example.ui.screens
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.webkit.CookieManager
-import android.webkit.HttpAuthHandler
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -20,9 +19,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import com.example.core.TelegramProxyManager
-import com.example.core.UrlSafetyAnalyzer
-import com.example.data.local.ProxyConfigEntity
 
 @Stable
 class BrowserWebViewController {
@@ -69,8 +65,6 @@ fun BrowserWebView(
     tabId: Long,
     targetUrl: String,
     approvedLoadRequest: Pair<Long, String>?,
-    activeProxy: ProxyConfigEntity?,
-    telegramKeepAliveEnabled: Boolean,
     controller: BrowserWebViewController,
     onInterceptNavigation: (String) -> Boolean,
     onPageUpdated: (
@@ -85,8 +79,6 @@ fun BrowserWebView(
 ) {
     val latestIntercept by rememberUpdatedState(onInterceptNavigation)
     val latestPageUpdated by rememberUpdatedState(onPageUpdated)
-    val latestProxy by rememberUpdatedState(activeProxy)
-    val latestKeepAlive by rememberUpdatedState(telegramKeepAliveEnabled)
 
     var lastHandledNonce by remember(tabId) { mutableStateOf(-1L) }
 
@@ -105,7 +97,6 @@ fun BrowserWebView(
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
-                    databaseEnabled = true
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     builtInZoomControls = true
@@ -115,7 +106,7 @@ fun BrowserWebView(
                     mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                     javaScriptCanOpenWindowsAutomatically = false
                     mediaPlaybackRequiresUserGesture = false
-                    userAgentString = settingsUserAgent(userAgentString)
+                    userAgentString = userAgentString.replace("; wv)", ")")
                 }
 
                 CookieManager.getInstance().setAcceptCookie(true)
@@ -151,9 +142,6 @@ fun BrowserWebView(
                         request: WebResourceRequest?,
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
-                        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                            return latestIntercept(url)
-                        }
                         return latestIntercept(url)
                     }
 
@@ -177,23 +165,6 @@ fun BrowserWebView(
                             view?.canGoBack() ?: false,
                             view?.canGoForward() ?: false,
                         )
-                        if (url != null && UrlSafetyAnalyzer.isTelegramHost(url) && latestKeepAlive) {
-                            view?.evaluateJavascript(TelegramProxyManager.TELEGRAM_KEEP_ALIVE_JS, null)
-                        }
-                    }
-
-                    override fun onReceivedHttpAuthRequest(
-                        view: WebView?,
-                        handler: HttpAuthHandler?,
-                        host: String?,
-                        realm: String?,
-                    ) {
-                        val proxy = latestProxy
-                        if (proxy != null && proxy.username.isNotBlank()) {
-                            handler?.proceed(proxy.username, proxy.password)
-                        } else {
-                            super.onReceivedHttpAuthRequest(view, handler, host, realm)
-                        }
                     }
                 }
 
@@ -219,9 +190,4 @@ fun BrowserWebView(
             controller.webView = null
         }
     }
-}
-
-private fun settingsUserAgent(defaultUa: String): String {
-    // Clean mobile Chrome-compatible User-Agent without WebView "; wv" token so web.telegram.org works reliably
-    return defaultUa.replace("; wv)", ")")
 }

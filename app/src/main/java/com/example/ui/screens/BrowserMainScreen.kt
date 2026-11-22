@@ -2,7 +2,6 @@ package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,11 +19,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
@@ -45,21 +47,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.LegalDocumentType
-import com.example.core.ProxyApplyStatus
 import com.example.core.UrlSafetyAnalyzer
 import com.example.data.local.UserProfileEntity
 import com.example.ui.BrowserOverlay
 import com.example.ui.BrowserUiState
 import com.example.ui.BrowserViewModel
 import com.example.ui.theme.JetBrainsMono
+import com.example.ui.theme.Obsidian
+import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SafeEmerald
-import com.example.ui.theme.TelegramBlue
 import com.example.ui.theme.WarningAmber
 
 @Composable
@@ -77,7 +81,6 @@ fun BrowserMainScreen(
         viewModel.clearSnackbar()
     }
 
-    // Handle back navigation gracefully: overlay -> WebView back -> Home page
     val shouldInterceptBack = uiState.activeOverlay != BrowserOverlay.NONE ||
         uiState.pendingSafetyWarning != null ||
         (activeTab != null && !activeTab.isHome)
@@ -101,45 +104,48 @@ fun BrowserMainScreen(
         containerColor = MaterialTheme.colorScheme.background,
     ) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Main Content Area
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .then(
-                            if (activeTab != null && !activeTab.isHome) {
-                                Modifier.statusBarsPadding()
-                            } else {
-                                Modifier
-                            }
-                        ),
-                ) {
-                    if (activeTab == null || activeTab.isHome) {
-                        StartPageContent(
-                            profile = uiState.profile,
-                            bookmarks = uiState.bookmarks,
-                            history = uiState.history,
-                            activeProxy = uiState.activeProxy,
-                            proxyEnabled = uiState.settings.proxyEnabled,
-                            safeBrowsingEnabled = uiState.settings.safeBrowsingEnabled,
-                            searchEngine = uiState.settings.searchEngine,
-                            onOpenOmnibox = { viewModel.setOverlay(BrowserOverlay.OMNIBOX_EDIT) },
-                            onOpenUrl = { viewModel.requestLoadUrl(it) },
-                            onOpenTelegramWeb = { viewModel.openTelegramWeb() },
-                            onOpenProxySheet = { viewModel.setOverlay(BrowserOverlay.PROXY_SHEET) },
-                            onOpenProfile = { viewModel.setOverlay(BrowserOverlay.PROFILE_SCREEN) },
-                            onOpenBookmarks = { viewModel.setOverlay(BrowserOverlay.BOOKMARKS_SHEET) },
-                            onOpenHistory = { viewModel.setOverlay(BrowserOverlay.HISTORY_SHEET) },
-                        )
-                    } else {
+            val isHome = activeTab == null || activeTab.isHome
+
+            if (isHome) {
+                // Full-bleed start screen with bottom dock floating over meadow matching screenshot
+                StartPageContent(
+                    profile = uiState.profile,
+                    bookmarks = uiState.bookmarks,
+                    safeBrowsingEnabled = uiState.settings.safeBrowsingEnabled,
+                    onOpenUrl = { viewModel.requestLoadUrl(it) },
+                    onOpenProfile = { viewModel.setOverlay(BrowserOverlay.PROFILE_SCREEN) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                BottomBrowserDock(
+                    tabCount = uiState.tabs.size.coerceAtLeast(1),
+                    currentUrl = "",
+                    isHome = true,
+                    isLoading = false,
+                    progress = 0,
+                    canGoBack = false,
+                    onBackClick = { viewModel.goHomeInActiveTab() },
+                    onNewTabClick = { viewModel.createNewTab() },
+                    onCenterOrbClick = { viewModel.setOverlay(BrowserOverlay.PROFILE_SCREEN) },
+                    onTabsClick = { viewModel.setOverlay(BrowserOverlay.TABS_SHEET) },
+                    onAddressClick = { viewModel.setOverlay(BrowserOverlay.OMNIBOX_EDIT) },
+                    onRefreshOrStop = { viewModel.setOverlay(BrowserOverlay.OMNIBOX_EDIT) },
+                    onMenuClick = { viewModel.setOverlay(BrowserOverlay.MENU_SHEET) },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .statusBarsPadding(),
+                    ) {
                         key(activeTab.id) {
                             BrowserWebView(
                                 tabId = activeTab.id,
                                 targetUrl = activeTab.url,
                                 approvedLoadRequest = uiState.approvedLoadRequest,
-                                activeProxy = uiState.activeProxy,
-                                telegramKeepAliveEnabled = uiState.settings.telegramKeepAliveEnabled,
                                 controller = webViewController,
                                 onInterceptNavigation = { url ->
                                     viewModel.shouldInterceptWebViewNavigation(url)
@@ -157,68 +163,36 @@ fun BrowserMainScreen(
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
-
-                        // Compact Telegram Proxy pill floating at top when browsing Telegram Web
-                        if (UrlSafetyAnalyzer.isTelegramHost(activeTab.url)) {
-                            Surface(
-                                onClick = { viewModel.setOverlay(BrowserOverlay.PROXY_SHEET) },
-                                shape = RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                                border = BorderStroke(1.dp, TelegramBlue.copy(alpha = 0.45f)),
-                                shadowElevation = 4.dp,
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(10.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(RoundedCornerShape(50))
-                                            .background(if (uiState.settings.proxyEnabled) SafeEmerald else WarningAmber),
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    val proxyBadge = when (val st = uiState.proxyApplyStatus) {
-                                        is ProxyApplyStatus.ActiveProxy -> st.label
-                                        is ProxyApplyStatus.Unsupported -> "Keep-Alive"
-                                        ProxyApplyStatus.DirectKeepAlive -> "TG Стабильный канал"
-                                    }
-                                    Text(
-                                        text = proxyBadge,
-                                        style = MaterialTheme.typography.labelSmall,
-                                    )
-                                }
-                            }
-                        }
                     }
-                }
 
-                // Bottom Omnibox matching the screenshot's signature floating address bar
-                BottomOmniboxBar(
-                    tabCount = uiState.tabs.size.coerceAtLeast(1),
-                    currentUrl = activeTab?.url.orEmpty(),
-                    isHome = activeTab?.isHome ?: true,
-                    isLoading = uiState.isWebLoading,
-                    progress = uiState.webLoadingProgress,
-                    onTabsClick = { viewModel.setOverlay(BrowserOverlay.TABS_SHEET) },
-                    onAddressClick = { viewModel.setOverlay(BrowserOverlay.OMNIBOX_EDIT) },
-                    onRefreshOrStop = {
-                        if (activeTab == null || activeTab.isHome) {
-                            viewModel.setOverlay(BrowserOverlay.OMNIBOX_EDIT)
-                        } else if (uiState.isWebLoading) {
-                            webViewController.stopLoading()
-                        } else {
-                            webViewController.reload()
-                        }
-                    },
-                    onMenuClick = { viewModel.setOverlay(BrowserOverlay.MENU_SHEET) },
-                )
+                    BottomBrowserDock(
+                        tabCount = uiState.tabs.size.coerceAtLeast(1),
+                        currentUrl = activeTab.url,
+                        isHome = false,
+                        isLoading = uiState.isWebLoading,
+                        progress = uiState.webLoadingProgress,
+                        canGoBack = true,
+                        onBackClick = {
+                            if (!webViewController.goBack()) {
+                                viewModel.goHomeInActiveTab()
+                            }
+                        },
+                        onNewTabClick = { viewModel.createNewTab() },
+                        onCenterOrbClick = { viewModel.setOverlay(BrowserOverlay.PROFILE_SCREEN) },
+                        onTabsClick = { viewModel.setOverlay(BrowserOverlay.TABS_SHEET) },
+                        onAddressClick = { viewModel.setOverlay(BrowserOverlay.OMNIBOX_EDIT) },
+                        onRefreshOrStop = {
+                            if (uiState.isWebLoading) {
+                                webViewController.stopLoading()
+                            } else {
+                                webViewController.reload()
+                            }
+                        },
+                        onMenuClick = { viewModel.setOverlay(BrowserOverlay.MENU_SHEET) },
+                    )
+                }
             }
 
-            // Fullscreen Overlays
             AnimatedVisibility(visible = uiState.activeOverlay == BrowserOverlay.OMNIBOX_EDIT) {
                 OmniboxSearchOverlay(
                     initialQuery = if (activeTab?.isHome == true) "" else activeTab?.url.orEmpty(),
@@ -246,7 +220,6 @@ fun BrowserMainScreen(
         }
     }
 
-    // Modal Bottom Sheets
     when (uiState.activeOverlay) {
         BrowserOverlay.MENU_SHEET -> {
             val isBookmarked = activeTab != null && !activeTab.isHome &&
@@ -258,14 +231,12 @@ fun BrowserMainScreen(
                 canGoForward = uiState.canWebGoForward,
                 isHome = activeTab?.isHome ?: true,
                 isBookmarked = isBookmarked,
-                proxyEnabled = uiState.settings.proxyEnabled,
                 onGoBack = { webViewController.goBack() },
                 onGoForward = { webViewController.goForward() },
                 onGoHome = { viewModel.goHomeInActiveTab() },
                 onReload = { webViewController.reload() },
                 onToggleBookmark = { viewModel.toggleCurrentPageBookmark() },
                 onOpenProfile = { viewModel.setOverlay(BrowserOverlay.PROFILE_SCREEN) },
-                onOpenProxy = { viewModel.setOverlay(BrowserOverlay.PROXY_SHEET) },
                 onOpenTabs = { viewModel.setOverlay(BrowserOverlay.TABS_SHEET) },
                 onOpenBookmarks = { viewModel.setOverlay(BrowserOverlay.BOOKMARKS_SHEET) },
                 onOpenHistory = { viewModel.setOverlay(BrowserOverlay.HISTORY_SHEET) },
@@ -281,30 +252,6 @@ fun BrowserMainScreen(
                 onSelectTab = { viewModel.selectTab(it) },
                 onCloseTab = { viewModel.closeTab(it) },
                 onNewTab = { viewModel.createNewTab() },
-                onDismiss = { viewModel.setOverlay(BrowserOverlay.NONE) },
-            )
-        }
-
-        BrowserOverlay.PROXY_SHEET -> {
-            TelegramProxySheet(
-                proxyEnabled = uiState.settings.proxyEnabled,
-                telegramKeepAlive = uiState.settings.telegramKeepAliveEnabled,
-                telegramWebVariant = uiState.settings.telegramWebVariant,
-                proxyConfigs = uiState.proxyConfigs,
-                activeProxy = uiState.activeProxy,
-                proxyApplyStatus = uiState.proxyApplyStatus,
-                proxyTestResult = uiState.proxyTestResult,
-                isTestingProxy = uiState.isTestingProxy,
-                onToggleProxyEnabled = { viewModel.setProxyEnabled(it) },
-                onToggleKeepAlive = { viewModel.setTelegramKeepAlive(it) },
-                onChangeTelegramVariant = { viewModel.setTelegramWebVariant(it) },
-                onActivateConfig = { viewModel.activateProxyConfig(it) },
-                onSaveCustomConfig = { name, proto, host, port, user, pass, tgOnly ->
-                    viewModel.saveCustomProxyConfig(name, proto, host, port, user, pass, tgOnly)
-                },
-                onDeleteConfig = { viewModel.deleteProxyConfig(it) },
-                onTestProxy = { host, port, id -> viewModel.testProxyConnection(host, port, id) },
-                onOpenTelegramWeb = { viewModel.openTelegramWeb() },
                 onDismiss = { viewModel.setOverlay(BrowserOverlay.NONE) },
             )
         }
@@ -342,7 +289,6 @@ fun BrowserMainScreen(
         else -> Unit
     }
 
-    // Dangerous Resource Interstitial Warning
     val pendingWarning = uiState.pendingSafetyWarning
     if (pendingWarning != null) {
         DangerousResourceModal(
@@ -352,7 +298,6 @@ fun BrowserMainScreen(
         )
     }
 
-    // Legal Document Dialog
     val legalDoc = uiState.legalDialog
     if (legalDoc != null) {
         LegalDocumentDialog(
@@ -363,32 +308,46 @@ fun BrowserMainScreen(
 }
 
 @Composable
-private fun BottomOmniboxBar(
+private fun BottomBrowserDock(
     tabCount: Int,
     currentUrl: String,
     isHome: Boolean,
     isLoading: Boolean,
     progress: Int,
+    canGoBack: Boolean,
+    onBackClick: () -> Unit,
+    onNewTabClick: () -> Unit,
+    onCenterOrbClick: () -> Unit,
     onTabsClick: () -> Unit,
     onAddressClick: () -> Unit,
     onRefreshOrStop: () -> Unit,
     onMenuClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val hostLabel = remember(currentUrl, isHome) {
         if (isHome || currentUrl.isBlank()) {
-            "Главная • Браузер K"
+            "поиск или сайт"
         } else {
             UrlSafetyAnalyzer.extractHost(currentUrl) ?: currentUrl
         }
     }
-    val isHttpInsecure = !isHome && currentUrl.startsWith("http://", ignoreCase = true)
+    val isHttpInsecure = !isHome &&
+        currentUrl.startsWith("http://", ignoreCase = true) &&
+        !UrlSafetyAnalyzer.isUrlAllowedForSession(currentUrl)
+
+    val dockContainerColor = if (isHome) {
+        Color(0xFFDCEBC6).copy(alpha = 0.94f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+    val dockIconTint = if (isHome) Obsidian else MaterialTheme.colorScheme.onSurface
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(dockContainerColor)
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(top = 8.dp, bottom = 6.dp, start = 12.dp, end = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (isLoading && !isHome) {
@@ -398,117 +357,186 @@ private fun BottomOmniboxBar(
                     .fillMaxWidth()
                     .widthIn(max = 720.dp)
                     .height(2.5.dp)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
                     .clip(RoundedCornerShape(50)),
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
         }
 
-        // Pill Omnibox mirroring screenshot bottom bar: [N] | lock + domain | refresh | menu
+        // White rounded search / address pill matching right phone in screenshot
         Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            shadowElevation = 6.dp,
+            shape = RoundedCornerShape(24.dp),
+            color = PureWhite,
+            shadowElevation = 2.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 720.dp)
-                .height(54.dp),
+                .height(48.dp),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 10.dp),
+                    .clickable(onClick = onAddressClick)
+                    .padding(horizontal = 14.dp)
+                    .testTag("bottom_address_bar"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Tab Counter Badge [N]
+                Icon(
+                    imageVector = when {
+                        isHome -> Icons.Default.Search
+                        isHttpInsecure -> Icons.Default.Warning
+                        else -> Icons.Default.Lock
+                    },
+                    contentDescription = null,
+                    tint = when {
+                        isHome -> Color(0xFF334155)
+                        isHttpInsecure -> WarningAmber
+                        else -> SafeEmerald
+                    },
+                    modifier = Modifier.size(19.dp),
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = hostLabel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isHome) Color(0xFF64748B) else Obsidian,
+                    fontWeight = if (isHome) FontWeight.Normal else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+
+                if (!isHome) {
+                    IconButton(
+                        onClick = onRefreshOrStop,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .testTag("bottom_refresh_button"),
+                    ) {
+                        Icon(
+                            imageVector = if (isLoading) Icons.Default.Close else Icons.Default.Refresh,
+                            contentDescription = if (isLoading) "Остановить" else "Обновить",
+                            tint = Obsidian,
+                            modifier = Modifier.size(19.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // 5-icon bottom bar matching right phone in screenshot: < | + | (Orb) | [N] | ≡
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 720.dp)
+                .height(48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                enabled = canGoBack,
+                modifier = Modifier.minimumInteractiveComponentSize(),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = "Назад",
+                    tint = if (canGoBack) dockIconTint else dockIconTint.copy(alpha = 0.35f),
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+
+            IconButton(
+                onClick = onNewTabClick,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("bottom_new_tab_button"),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Новая вкладка",
+                    tint = dockIconTint,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+
+            // Center glowing orb matching the screenshot (opens Profile ID K)
+            Box(
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(CircleShape)
+                    .clickable(onClick = onCenterOrbClick)
+                    .testTag("bottom_idk_orb"),
+                contentAlignment = Alignment.Center,
+            ) {
                 Box(
                     modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable(onClick = onTabsClick)
-                        .testTag("bottom_tabs_button"),
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))
+                            )
+                        )
+                        .border(2.5.dp, PureWhite.copy(alpha = 0.85f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
-                            .border(
-                                width = 1.8.dp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                shape = RoundedCornerShape(7.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = tabCount.toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = JetBrainsMono,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
+                            .size(11.dp)
+                            .clip(CircleShape)
+                            .background(PureWhite.copy(alpha = 0.9f)),
+                    )
                 }
+            }
 
-                // Center Address Pill
-                Row(
+            // Tab counter square [N]
+            Box(
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onTabsClick)
+                    .testTag("bottom_tabs_button"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable(onClick = onAddressClick)
-                        .padding(horizontal = 8.dp)
-                        .testTag("bottom_address_bar"),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
+                        .size(22.dp)
+                        .border(
+                            width = 1.8.dp,
+                            color = dockIconTint,
+                            shape = RoundedCornerShape(6.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = when {
-                            isHome -> Icons.Default.Search
-                            isHttpInsecure -> Icons.Default.Warning
-                            else -> Icons.Default.Lock
-                        },
-                        contentDescription = null,
-                        tint = when {
-                            isHome -> MaterialTheme.colorScheme.onSurfaceVariant
-                            isHttpInsecure -> WarningAmber
-                            else -> SafeEmerald
-                        },
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = hostLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        text = tabCount.toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = JetBrainsMono,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = dockIconTint,
                     )
                 }
+            }
 
-                IconButton(
-                    onClick = onRefreshOrStop,
-                    modifier = Modifier.testTag("bottom_refresh_button"),
-                ) {
-                    Icon(
-                        imageVector = if (isLoading && !isHome) Icons.Default.Close else Icons.Default.Refresh,
-                        contentDescription = if (isLoading && !isHome) "Остановить" else "Обновить",
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
-
-                IconButton(
-                    onClick = onMenuClick,
-                    modifier = Modifier.testTag("bottom_menu_button"),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Меню",
-                        modifier = Modifier.size(21.dp),
-                    )
-                }
+            IconButton(
+                onClick = onMenuClick,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("bottom_menu_button"),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Меню",
+                    tint = dockIconTint,
+                    modifier = Modifier.size(24.dp),
+                )
             }
         }
     }

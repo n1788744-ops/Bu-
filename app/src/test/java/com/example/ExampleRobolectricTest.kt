@@ -23,8 +23,8 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `safe urls pass without warning`() {
-        assertTrue(UrlSafetyAnalyzer.analyzeUrl("https://web.telegram.org/k/") is SafetyVerdict.Safe)
+    fun `safe urls and trusted sitefortress pass without warning`() {
+        assertTrue(UrlSafetyAnalyzer.analyzeUrl("http://sitefortress.ru/") is SafetyVerdict.Safe)
         assertTrue(UrlSafetyAnalyzer.analyzeUrl("https://ya.ru/") is SafetyVerdict.Safe)
     }
 
@@ -33,7 +33,7 @@ class ExampleRobolectricTest {
         val httpVerdict = UrlSafetyAnalyzer.analyzeUrl("http://suspicious-login.example")
         assertTrue(httpVerdict is SafetyVerdict.Suspicious)
 
-        val phishingVerdict = UrlSafetyAnalyzer.analyzeUrl("https://te1egram-gift.xyz/claim")
+        val phishingVerdict = UrlSafetyAnalyzer.analyzeUrl("https://yandx-prize.xyz/claim")
         assertTrue(phishingVerdict is SafetyVerdict.Suspicious)
 
         UrlSafetyAnalyzer.allowForSession("http://suspicious-login.example")

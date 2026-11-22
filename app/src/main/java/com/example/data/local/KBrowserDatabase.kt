@@ -11,9 +11,8 @@ import androidx.room.RoomDatabase
         BrowserTabEntity::class,
         BookmarkEntity::class,
         HistoryEntity::class,
-        ProxyConfigEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class KBrowserDatabase : RoomDatabase() {
@@ -21,7 +20,6 @@ abstract class KBrowserDatabase : RoomDatabase() {
     abstract fun browserTabDao(): BrowserTabDao
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun historyDao(): HistoryDao
-    abstract fun proxyConfigDao(): ProxyConfigDao
 
     companion object {
         @Volatile
@@ -33,7 +31,10 @@ abstract class KBrowserDatabase : RoomDatabase() {
                     context.applicationContext,
                     KBrowserDatabase::class.java,
                     "k_browser_db",
-                ).build().also { instance = it }
+                )
+                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .build()
+                    .also { instance = it }
             }
         }
     }

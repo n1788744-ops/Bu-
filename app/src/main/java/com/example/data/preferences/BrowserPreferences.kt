@@ -18,9 +18,6 @@ data class BrowserSettingsSnapshot(
     val consentAccepted: Boolean = false,
     val activeTabId: Long = 1L,
     val searchEngine: String = "Yandex",
-    val proxyEnabled: Boolean = true,
-    val telegramKeepAliveEnabled: Boolean = true,
-    val telegramWebVariant: String = "webk",
     val safeBrowsingEnabled: Boolean = true,
     val themeMode: String = "system",
 )
@@ -32,9 +29,6 @@ class BrowserPreferences(private val context: Context) {
         val CONSENT_ACCEPTED = booleanPreferencesKey("consent_accepted")
         val ACTIVE_TAB_ID = longPreferencesKey("active_tab_id")
         val SEARCH_ENGINE = stringPreferencesKey("search_engine")
-        val PROXY_ENABLED = booleanPreferencesKey("proxy_enabled")
-        val TELEGRAM_KEEP_ALIVE = booleanPreferencesKey("telegram_keep_alive")
-        val TELEGRAM_WEB_VARIANT = stringPreferencesKey("telegram_web_variant")
         val SAFE_BROWSING_ENABLED = booleanPreferencesKey("safe_browsing_enabled")
         val THEME_MODE = stringPreferencesKey("theme_mode")
     }
@@ -45,9 +39,6 @@ class BrowserPreferences(private val context: Context) {
             consentAccepted = prefs[Keys.CONSENT_ACCEPTED] ?: false,
             activeTabId = prefs[Keys.ACTIVE_TAB_ID] ?: 1L,
             searchEngine = prefs[Keys.SEARCH_ENGINE] ?: "Yandex",
-            proxyEnabled = prefs[Keys.PROXY_ENABLED] ?: true,
-            telegramKeepAliveEnabled = prefs[Keys.TELEGRAM_KEEP_ALIVE] ?: true,
-            telegramWebVariant = prefs[Keys.TELEGRAM_WEB_VARIANT] ?: "webk",
             safeBrowsingEnabled = prefs[Keys.SAFE_BROWSING_ENABLED] ?: true,
             themeMode = prefs[Keys.THEME_MODE] ?: "system",
         )
@@ -69,24 +60,6 @@ class BrowserPreferences(private val context: Context) {
     suspend fun setSearchEngine(engine: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.SEARCH_ENGINE] = engine
-        }
-    }
-
-    suspend fun setProxyEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.PROXY_ENABLED] = enabled
-        }
-    }
-
-    suspend fun setTelegramKeepAlive(enabled: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.TELEGRAM_KEEP_ALIVE] = enabled
-        }
-    }
-
-    suspend fun setTelegramWebVariant(variant: String) {
-        context.dataStore.edit { prefs ->
-            prefs[Keys.TELEGRAM_WEB_VARIANT] = variant
         }
     }
 

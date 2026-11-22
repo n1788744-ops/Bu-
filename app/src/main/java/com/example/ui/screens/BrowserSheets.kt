@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,7 +46,6 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material.icons.outlined.Tab
-import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -101,7 +99,6 @@ import com.example.ui.theme.ElectricSky
 import com.example.ui.theme.JetBrainsMono
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SafeEmerald
-import com.example.ui.theme.TelegramBlue
 import com.example.ui.theme.WarningAmber
 
 @Composable
@@ -317,7 +314,7 @@ fun OmniboxSearchOverlay(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Адрес сайта или поиск в $searchEngine") },
+                    placeholder = { Text("Поиск в $searchEngine или адрес сайта") },
                     singleLine = true,
                     leadingIcon = {
                         Icon(Icons.Default.Search, contentDescription = null, tint = ElectricSky)
@@ -348,20 +345,15 @@ fun OmniboxSearchOverlay(
                 }
             }
 
-            // Quick chips for Telegram & Security check demo
+            // Quick chips: SiteFortress & Danger check
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FilterChip(
                     selected = false,
-                    onClick = { onSubmit("https://web.telegram.org/k/") },
-                    label = { Text("Telegram Web") },
-                )
-                FilterChip(
-                    selected = false,
-                    onClick = { onSubmit("https://ya.ru") },
-                    label = { Text("ya.ru") },
+                    onClick = { onSubmit("http://sitefortress.ru/") },
+                    label = { Text("sitefortress.ru") },
                 )
                 FilterChip(
                     selected = false,
@@ -456,14 +448,12 @@ fun BrowserMenuSheet(
     canGoForward: Boolean,
     isHome: Boolean,
     isBookmarked: Boolean,
-    proxyEnabled: Boolean,
     onGoBack: () -> Unit,
     onGoForward: () -> Unit,
     onGoHome: () -> Unit,
     onReload: () -> Unit,
     onToggleBookmark: () -> Unit,
     onOpenProfile: () -> Unit,
-    onOpenProxy: () -> Unit,
     onOpenTabs: () -> Unit,
     onOpenBookmarks: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -485,7 +475,6 @@ fun BrowserMenuSheet(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Navigation Action Bar
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
@@ -529,15 +518,6 @@ fun BrowserMenuSheet(
                 badgeColor = Color(profile?.avatarColorHex ?: 0xFF0EA5E9),
                 onClick = onOpenProfile,
                 testTag = "menu_profile_item",
-            )
-
-            MenuRowItem(
-                icon = Icons.Outlined.VpnKey,
-                title = "Прокси для Telegram Web",
-                subtitle = if (proxyEnabled) "Активен • стабильный канал" else "Выключен",
-                badgeColor = TelegramBlue,
-                onClick = onOpenProxy,
-                testTag = "menu_proxy_item",
             )
 
             MenuRowItem(

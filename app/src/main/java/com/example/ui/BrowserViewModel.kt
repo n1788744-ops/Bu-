@@ -4,17 +4,13 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.LegalDocumentType
-import com.example.core.ProxyApplyStatus
-import com.example.core.ProxyTestResult
 import com.example.core.SafetyVerdict
-import com.example.core.TelegramProxyManager
 import com.example.core.UrlSafetyAnalyzer
 import com.example.data.BrowserRepository
 import com.example.data.local.BookmarkEntity
 import com.example.data.local.BrowserTabEntity
 import com.example.data.local.HistoryEntity
 import com.example.data.local.KBrowserDatabase
-import com.example.data.local.ProxyConfigEntity
 import com.example.data.local.UserProfileEntity
 import com.example.data.preferences.BrowserPreferences
 import com.example.data.preferences.BrowserSettingsSnapshot
@@ -43,7 +39,6 @@ enum class BrowserOverlay {
     MENU_SHEET,
     TABS_SHEET,
     PROFILE_SCREEN,
-    PROXY_SHEET,
     BOOKMARKS_SHEET,
     HISTORY_SHEET,
     SETTINGS_SHEET,
@@ -69,11 +64,6 @@ data class BrowserUiState(
     val activeTab: BrowserTabEntity? = null,
     val bookmarks: List<BookmarkEntity> = emptyList(),
     val history: List<HistoryEntity> = emptyList(),
-    val proxyConfigs: List<ProxyConfigEntity> = emptyList(),
-    val activeProxy: ProxyConfigEntity? = null,
-    val proxyApplyStatus: ProxyApplyStatus = ProxyApplyStatus.DirectKeepAlive,
-    val proxyTestResult: ProxyTestResult? = null,
-    val isTestingProxy: Boolean = false,
     val activeOverlay: BrowserOverlay = BrowserOverlay.NONE,
     val legalDialog: LegalDocumentType? = null,
     val pendingSafetyWarning: SafetyVerdict.Suspicious? = null,
@@ -82,7 +72,7 @@ data class BrowserUiState(
     val canWebGoBack: Boolean = false,
     val canWebGoForward: Boolean = false,
     val snackbarMessage: String? = null,
-    val approvedLoadRequest: Pair<Long, String>? = null, // (nonce, url)
+    val approvedLoadRequest: Pair<Long, String>? = null,
 )
 
 class BrowserViewModel(application: Application) : AndroidViewModel(application) {
@@ -106,9 +96,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
         val isWebLoading: Boolean = false,
         val canWebGoBack: Boolean = false,
         val canWebGoForward: Boolean = false,
-        val proxyApplyStatus: ProxyApplyStatus = ProxyApplyStatus.DirectKeepAlive,
-        val proxyTestResult: ProxyTestResult? = null,
-        val isTestingProxy: Boolean = false,
         val snackbarMessage: String? = null,
         val approvedLoadRequest: Pair<Long, String>? = null,
     )
@@ -120,7 +107,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
         repository.tabs,
         repository.bookmarks,
         repository.history,
-        repository.proxyConfigs,
         _ephemeral,
     ) { values ->
         val initialized = values[0] as Boolean
@@ -132,12 +118,9 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
         val bookmarks = values[4] as List<BookmarkEntity>
         @Suppress("UNCHECKED_CAST")
         val history = values[5] as List<HistoryEntity>
-        @Suppress("UNCHECKED_CAST")
-        val proxies = values[6] as List<ProxyConfigEntity>
-        val eph = values[7] as EphemeralBrowserState
+        val eph = values[6] as EphemeralBrowserState
 
         val activeTab = tabs.firstOrNull { it.id == settings.activeTabId } ?: tabs.firstOrNull()
-        val activeProxy = proxies.firstOrNull { it.isActive } ?: proxies.firstOrNull()
 
         BrowserUiState(
             isInitialized = initialized,
@@ -147,11 +130,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
             activeTab = activeTab,
             bookmarks = bookmarks,
             history = history,
-            proxyConfigs = proxies,
-            activeProxy = activeProxy,
-            proxyApplyStatus = eph.proxyApplyStatus,
-            proxyTestResult = eph.proxyTestResult,
-            isTestingProxy = eph.isTestingProxy,
             activeOverlay = eph.activeOverlay,
             legalDialog = eph.legalDialog,
             pendingSafetyWarning = eph.pendingSafetyWarning,
@@ -286,7 +264,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
 
     fun signOut() {
         viewModelScope.launch {
-            TelegramProxyManager.clearProxyIfNeeded()
             _ephemeral.update { EphemeralBrowserState() }
             repository.signOut()
         }
@@ -313,17 +290,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
         requestLoadUrl(resolved)
     }
 
-    fun openTelegramWeb() {
-        val variant = uiState.value.settings.telegramWebVariant
-        val url = if (variant == "weba") {
-            "https://web.telegram.org/a/"
-        } else {
-            "https://web.telegram.org/k/"
-        }
-        setOverlay(BrowserOverlay.NONE)
-        requestLoadUrl(url)
-    }
-
     fun requestLoadUrl(url: String) {
         val safeEnabled = uiState.value.settings.safeBrowsingEnabled
         val verdict = UrlSafetyAnalyzer.analyzeUrl(url, safeBrowsingEnabled = safeEnabled)
@@ -344,7 +310,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
             _ephemeral.update { it.copy(pendingSafetyWarning = verdict) }
             true
         } else {
-            applyProxyRuleForUrl(url)
             false
         }
     }
@@ -361,7 +326,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun proceedToUrl(url: String, wasSuspicious: Boolean, wasBypassed: Boolean) {
-        val proxyStatus = applyProxyRuleForUrl(url)
         val tab = uiState.value.activeTab ?: return
         viewModelScope.launch {
             val hostTitle = UrlSafetyAnalyzer.extractHost(url) ?: url
@@ -379,25 +343,14 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
             )
             _ephemeral.update {
                 it.copy(
-                    proxyApplyStatus = proxyStatus,
                     approvedLoadRequest = System.nanoTime() to url,
                 )
             }
         }
     }
 
-    private fun applyProxyRuleForUrl(url: String): ProxyApplyStatus {
-        val state = uiState.value
-        return TelegramProxyManager.applyForUrl(
-            url = url,
-            proxyEnabled = state.settings.proxyEnabled,
-            activeConfig = state.activeProxy,
-        )
-    }
-
     fun goHomeInActiveTab() {
         val tab = uiState.value.activeTab ?: return
-        TelegramProxyManager.clearProxyIfNeeded()
         viewModelScope.launch {
             repository.updateTabNavigation(
                 tabId = tab.id,
@@ -411,7 +364,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
                     webLoadingProgress = 0,
                     canWebGoBack = false,
                     canWebGoForward = false,
-                    proxyApplyStatus = ProxyApplyStatus.DirectKeepAlive,
                 )
             }
         }
@@ -461,11 +413,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
     fun selectTab(tabId: Long) {
         viewModelScope.launch {
             repository.selectTab(tabId)
-            val target = uiState.value.tabs.firstOrNull { it.id == tabId }
-            if (target != null && !target.isHome && target.url.isNotBlank()) {
-                val status = applyProxyRuleForUrl(target.url)
-                _ephemeral.update { it.copy(proxyApplyStatus = status) }
-            }
             setOverlay(BrowserOverlay.NONE)
         }
     }
@@ -513,91 +460,6 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
             repository.clearHistory()
             showSnackbar("История посещений очищена")
         }
-    }
-
-    // --- Telegram Proxy ---
-
-    fun setProxyEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            repository.setProxyEnabled(enabled)
-            val activeUrl = uiState.value.activeTab?.url.orEmpty()
-            val status = TelegramProxyManager.applyForUrl(
-                url = activeUrl,
-                proxyEnabled = enabled,
-                activeConfig = uiState.value.activeProxy,
-            )
-            _ephemeral.update { it.copy(proxyApplyStatus = status) }
-        }
-    }
-
-    fun activateProxyConfig(config: ProxyConfigEntity) {
-        viewModelScope.launch {
-            repository.activateProxy(config.id)
-            val activeUrl = uiState.value.activeTab?.url.orEmpty()
-            val status = TelegramProxyManager.applyForUrl(
-                url = activeUrl,
-                proxyEnabled = true,
-                activeConfig = config.copy(isActive = true),
-            )
-            _ephemeral.update { it.copy(proxyApplyStatus = status) }
-            showSnackbar("Прокси «${config.name}» активирован")
-        }
-    }
-
-    fun saveCustomProxyConfig(
-        name: String,
-        protocol: String,
-        host: String,
-        port: Int,
-        username: String,
-        password: String,
-        telegramOnly: Boolean,
-    ) {
-        viewModelScope.launch {
-            val entity = ProxyConfigEntity(
-                name = name.ifBlank { "$protocol $host:$port" },
-                protocol = protocol,
-                host = host.trim(),
-                port = port,
-                username = username.trim(),
-                password = password,
-                telegramOnly = telegramOnly,
-                isActive = true,
-            )
-            repository.saveAndActivateProxy(entity)
-            val status = TelegramProxyManager.applyForUrl(
-                url = uiState.value.activeTab?.url ?: "https://web.telegram.org/k/",
-                proxyEnabled = true,
-                activeConfig = entity,
-            )
-            _ephemeral.update { it.copy(proxyApplyStatus = status) }
-            showSnackbar("Прокси сохранён и применён")
-        }
-    }
-
-    fun deleteProxyConfig(id: Long) {
-        viewModelScope.launch {
-            repository.deleteProxyConfig(id)
-        }
-    }
-
-    fun testProxyConnection(host: String, port: Int, configId: Long? = null) {
-        viewModelScope.launch {
-            _ephemeral.update { it.copy(isTestingProxy = true, proxyTestResult = null) }
-            val result = TelegramProxyManager.testProxyReachability(host, port)
-            if (configId != null) {
-                repository.updateProxyLatency(configId, result.latencyMs)
-            }
-            _ephemeral.update { it.copy(isTestingProxy = false, proxyTestResult = result) }
-        }
-    }
-
-    fun setTelegramKeepAlive(enabled: Boolean) {
-        viewModelScope.launch { repository.setTelegramKeepAlive(enabled) }
-    }
-
-    fun setTelegramWebVariant(variant: String) {
-        viewModelScope.launch { repository.setTelegramWebVariant(variant) }
     }
 
     // --- Settings & Overlays ---
